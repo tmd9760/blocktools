@@ -11,13 +11,15 @@ class BlockHeader:
 		self.time = uint4(blockchain)
 		self.bits = uint4(blockchain)
 		self.nonce = uint4(blockchain)
+
 	def toString(self):
-		print "Version:\t %d" % self.version
-		print "Previous Hash\t %s" % hashStr(self.previousHash)
-		print "Merkle Root\t %s" % hashStr(self.merkleHash)
-		print "Time stamp\t "+ self.decodeTime(self.time)
-		print "Difficulty\t %d" % self.bits
-		print "Nonce\t\t %s" % self.nonce
+		print "Version        : %d" % self.version
+		print "Previous Hash  : %s" % hashStr(self.previousHash)
+		print "Merkle Root    : %s" % hashStr(self.merkleHash)
+		print "Time stamp     : "+ self.decodeTime(self.time)
+		print "Difficulty     : %d" % self.bits
+		print "Nonce          : %s" % self.nonce
+
 	def decodeTime(self, time):
 		utc_time = datetime.utcfromtimestamp(time)
 		return utc_time.strftime("%Y-%m-%d %H:%M:%S.%f+00:00 (UTC)")
@@ -75,15 +77,18 @@ class Block:
 
 	def toString(self):
 		print ""
-		print "Magic No: \t%8x" % self.magicNum
-		print "Blocksize: \t", self.blocksize
-		print ""
-		print "#"*10 + " Block Header " + "#"*10
+		print "Magic No  : %8x" % self.magicNum
+		print "Blocksize : ", self.blocksize
+		print "#"*50
+		print "Block Header"
+		print "#"*50
 		self.blockHeader.toString()
 		print 
-		print "##### Tx Count: %d" % self.txCount
+		print "##### Tx Count : %d" % self.txCount
+
 		for t in self.Txs:
 			t.toString()
+
 		print "#### end of all %d transactins" % self.txCount
 
 class Tx:
@@ -106,15 +111,19 @@ class Tx:
 	def toString(self):
 		print ""
 		print "="*20 + " No. %s " %self.seq + "Transaction " + "="*20
-		print "Tx Version:\t %d" % self.version
-		print "Inputs:\t\t %d" % self.inCount
+		print "# Tx Version : %d" % self.version
+
+		print "# Inputs     : %d" % self.inCount
+
 		for i in self.inputs:
 			i.toString()
 
-		print "Outputs:\t %d" % self.outCount
+		print "# Outputs    : %d" % self.outCount
+
 		for o in self.outputs:
 			o.toString()
-		print "Lock Time:\t %d" % self.lockTime
+
+		print "# Lock Time  : %d" % self.lockTime
 
 class txInput:
 	def __init__(self, blockchain):
@@ -126,11 +135,13 @@ class txInput:
 
 	def toString(self):
 #		print "\tPrev. Tx Hash:\t %s" % hashStr(self.prevhash)
-		print "\tTx Out Index:\t %s" % self.decodeOutIdx(self.txOutId)
-		print "\tScript Length:\t %d" % self.scriptLen
+		print "\tTx Out Index     : %s" % self.decodeOutIdx(self.txOutId)
+		print "\tScript Length    : %d" % self.scriptLen
 #		print "\tScriptSig:\t %s" % 
 		self.decodeScriptSig(self.scriptSig)
-		print "\tSequence:\t %8x" % self.seqNo
+		print "\tSequence         : %8x" % self.seqNo
+		print ""
+
 	def decodeScriptSig(self,data):
 		hexstr = hashStr(data)
 		if 0xffffffff == self.txOutId: #Coinbase
@@ -138,21 +149,21 @@ class txInput:
 		scriptLen = int(hexstr[0:2],16)
 		scriptLen *= 2
 		script = hexstr[2:2+scriptLen] 
-		print "\tScript:\t\t " + script
+		print "\tScript           : " + script
 		if SIGHASH_ALL != int(hexstr[scriptLen:scriptLen+2],16): # should be 0x01
 			print "\t Script op_code is not SIGHASH_ALL"
 			return hexstr
 		else: 
 			pubkey = hexstr[2+scriptLen+2:2+scriptLen+2+66]
-			print " \tInPubkey:\t "  + pubkey
+			print "\tInPubkey         : "  + pubkey
 #		return hexstr
 	def decodeOutIdx(self,idx):
 		s = ""
 		if(idx == 0xffffffff):
 			s = " Coinbase with special index"
-			print "\tCoinbase Text:\t %s" % hashStr(self.prevhash).decode("utf-8")
+			print "\tCoinbase Text    : %s" % hashStr(self.prevhash).decode("utf-8")
 		else: 
-			print "\tPrev. Tx Hash:\t %s" % hashStr(self.prevhash)
+			print "\tPrev. Tx Hash    : %s" % hashStr(self.prevhash)
 		return "%8x"%idx + s 
 		
 class txOutput:
@@ -162,21 +173,24 @@ class txOutput:
 		self.pubkey = blockchain.read(self.scriptLen)
 
 	def toString(self):
-		print "\tValue:\t\t %d" % self.value + " Satoshi"
-		print "\tScript Len:\t %d" % self.scriptLen
-		print "\tScriptPubkey:\t %s" % self.decodeScriptPubkey(self.pubkey)
+		print "\tValue            : %d" % self.value + " Satoshi"
+		print "\tScript Len       : %d" % self.scriptLen
+		print "\tScriptPubkey     : %s" % self.decodeScriptPubkey(self.pubkey)
+		print ""
 	def decodeScriptPubkey(self,data):
 		hexstr = hashStr(data)
 		op_idx = int(hexstr[0:2],16)
 		try: 
 			op_code1 = OPCODE_NAMES[op_idx]
 		except KeyError: #Obselete pay to pubkey directly 
-			print " \tOP_CODE %d is probably obselete pay to address"
+			print "\t###"
+			print "\tOP_CODE %d is probably obselete pay to address"
 			keylen = op_idx
 			op_codeTail = OPCODE_NAMES[int(hexstr[2+keylen*2:2+keylen*2+2],16)]
-			print " \tPubkey OP_CODE:\t " "None " + "Bytes:%d " % keylen +\
+			print "\tPubkey OP_CODE:\t " "None " + "Bytes:%d " % keylen +\
 					"tail_op_code:" +  op_codeTail + " " 
-			print "\tPure Pubkey:\t   %s" % hexstr[2:2+keylen*2]
+			print "\tPure Pubkey      : %s" % hexstr[2:2+keylen*2]
+			print "\t###"
 			return hexstr
 		if op_code1 == "OP_DUP":  #P2PKHA pay to pubkey hash mode
 	 		op_code2 = OPCODE_NAMES[int(hexstr[2:4],16)] + " "
@@ -185,14 +199,14 @@ class txOutput:
 			op_codeTailLast = OPCODE_NAMES[int(hexstr[6+keylen*2+2:6+keylen*2+4],16)]
 			print " \tPubkey OP_CODE:\t " + op_code1 + " " + op_code2 + " " + "Bytes:%d " % keylen +\
 					"tail_op_code:" +  op_codeTail2nd + " " + op_codeTailLast
-			print "\tPubkeyHash:\t       %s" % hexstr[6:6+keylen*2]
+			print "\tPubkeyHash       : %s" % hexstr[6:6+keylen*2]
 			return hexstr	
 		elif op_code1 == "OP_HASH160": #P2SHA pay to script hash 
 			keylen = int(hexstr[2:4],16) 
 			op_codeTail = OPCODE_NAMES[int(hexstr[4+keylen*2:4+keylen*2+2],16)]
 			print " \tPubkey OP_CODE:\t " + op_code1 + " " + " " + "Bytes:%d " % keylen +\
 					"tail_op_code:" +  op_codeTail + " " 
-			print "\tPure Pubkey:\t     %s" % hexstr[4:4+keylen*2]
+			print "\tPure Pubkey      : %s" % hexstr[4:4+keylen*2]
 			return hexstr
 		else: #TODO extend for multi-signature parsing 
 			print "\t Need to extend multi-signatuer parsing %x" % int(hexstr[0:2],16) + op_code1

@@ -1,7 +1,22 @@
 #!/usr/bin/python
 import sys
+import hashlib
 from blocktools import *
 from block import Block, BlockHeader
+
+def reverse(input):
+    L = len(input)
+    if (L % 2) != 0:
+        return None
+    else:
+        Res = ''
+        L = L // 2
+        for i in range(L):
+            T = input[i*2] + input[i*2+1]
+            Res = T + Res
+            T = ''
+        return (Res);
+
 
 def parse(blockchain, blkNo):
 	print 'Parsing Block Chain block head, transaction etc.'
@@ -15,18 +30,24 @@ def parse(blockchain, blkNo):
 	blockchain.seek(0, 2) # file road(start , end)
 	fSize = blockchain.tell() - 80 # Minus last Block header size for partial file
 	blockchain.seek(0, 0) # file road(start, end)
+
 	while continueParsing:	
 		block = Block(blockchain)
 		continueParsing = block.continueParsing
+
 		if continueParsing:
 			block.toString()
+
 		counter+=1
+
 		print "\n\n\n\n\n"
 		print "#"*100
 		print "Block Counter No. %s"%counter
 		print "#"*100
+
 		if counter >= blkNo and blkNo != 0xFF:
 			continueParsing = False
+
 
 	print ''
 	print 'Reached End of Field'
@@ -43,7 +64,6 @@ def main():
 
 		with open(sys.argv[1], 'rb') as blockchain:
 			parse(blockchain,blkNo)
-
 
 
 if __name__ == '__main__':

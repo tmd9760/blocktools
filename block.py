@@ -2,9 +2,43 @@ from blocktools import *
 from opcode import *
 from datetime import datetime
 import time
+import hashlib
+
+def reverse(input):
+    L = len(input)
+    if (L % 2) != 0:
+        return None
+    else:
+        Res = ''
+        L = L // 2
+        for i in range(L):
+            T = input[i*2] + input[i*2+1]
+            Res = T + Res
+            T = ''
+        return (Res);
+
 
 class BlockHeader:
 	def __init__(self, blockchain):
+
+		tmpHex = ""
+		tmpPos3 = blockchain.tell()
+		while blockchain.tell() != tmpPos3 + 80:
+			b = blockchain.read(1)
+			b = b.encode('hex')
+			tmpHex = tmpHex + b
+		tmpHex = tmpHex.decode('hex')
+		tmpHex = hashlib.new('sha256', tmpHex).digest()
+		tmpHex = hashlib.new('sha256', tmpHex).digest()
+		tmpHex = tmpHex.encode('hex')
+#		tmpHex = tmpHex.upper()
+		tmpHex = reverse(tmpHex)
+#        resList.append('SHA256 hash of the current block hash = ' + tmpHex)
+		blockchain.seek(tmpPos3,0)
+#		print "#Block Hash : %s " % tmpHex
+#        tmpHex = ''
+
+		self.blockhash = tmpHex
 		self.version = uint4(blockchain)
 		self.previousHash = hash32(blockchain)
 		self.merkleHash = hash32(blockchain)
@@ -12,7 +46,9 @@ class BlockHeader:
 		self.bits = uint4(blockchain)
 		self.nonce = uint4(blockchain)
 
+
 	def toString(self):
+		print "Block Hash     : %s" % self.blockhash
 		print "Version        : %d" % self.version
 		print "Previous Hash  : %s" % hashStr(self.previousHash)
 		print "Merkle Root    : %s" % hashStr(self.merkleHash)
@@ -33,6 +69,8 @@ class Block:
 		self.txCount = 0
 		self.Txs = []
 
+#		self.blockhash = hash80(blockchain)
+
 		if self.hasLength(blockchain, 8):	
 			self.magicNum = uint4(blockchain)
 			self.blocksize = uint4(blockchain)
@@ -47,7 +85,7 @@ class Block:
 
 			for i in range(0, self.txCount):
 				tx = Tx(blockchain)
-				tx.seq = i 
+				tx.seq = i + 1
 				self.Txs.append(tx)
 		else:
 			self.continueParsing = False
@@ -82,8 +120,11 @@ class Block:
 		print "#"*50
 		print "Block Header"
 		print "#"*50
+
+		# Block Header
 		self.blockHeader.toString()
-		print 
+	
+		print ""
 		print "##### Tx Count : %d" % self.txCount
 
 		for t in self.Txs:
@@ -93,36 +134,55 @@ class Block:
 
 class Tx:
 	def __init__(self, blockchain):
+		self.seq = 1
+
 		self.version = uint4(blockchain)
+
 		self.inCount = varint(blockchain)
 		self.inputs = []
-		self.seq = 1
 		for i in range(0, self.inCount):
 			input = txInput(blockchain)
 			self.inputs.append(input)
+
+		print "# Inputs Script : %s" % self.inputs
+
 		self.outCount = varint(blockchain)
 		self.outputs = []
 		if self.outCount > 0:
 			for i in range(0, self.outCount):
 				output = txOutput(blockchain)
 				self.outputs.append(output)	
+
+
+
 		self.lockTime = uint4(blockchain)
-		
+
+
+
 	def toString(self):
+
 		print ""
 		print "="*20 + " No. %s " %self.seq + "Transaction " + "="*20
+
 		print "# Tx Version : %d" % self.version
 
-		print "# Inputs     : %d" % self.inCount
 
+		# for index, value in enumerate(self.inputs)
+			# print "# Inputs Script : %s" % self.inputs
+			# print( index,  value)
+
+
+
+		print "# Inputs     : %d" % self.inCount
 		for i in self.inputs:
 			i.toString()
+		print ""
 
 		print "# Outputs    : %d" % self.outCount
-
 		for o in self.outputs:
 			o.toString()
 
+		print ""
 		print "# Lock Time  : %d" % self.lockTime
 
 class txInput:
@@ -134,7 +194,7 @@ class txInput:
 		self.seqNo = uint4(blockchain)
 
 	def toString(self):
-#		print "\tPrev. Tx Hash:\t %s" % hashStr(self.prevhash)
+#		print "\tPrev. Tx Hash    : %s" % hashStr(self.prevhash)
 		print "\tTx Out Index     : %s" % self.decodeOutIdx(self.txOutId)
 		print "\tScript Length    : %d" % self.scriptLen
 #		print "\tScriptSig:\t %s" % 
@@ -156,7 +216,8 @@ class txInput:
 		else: 
 			pubkey = hexstr[2+scriptLen+2:2+scriptLen+2+66]
 			print "\tInPubkey         : "  + pubkey
-#		return hexstr
+		return hexstr
+
 	def decodeOutIdx(self,idx):
 		s = ""
 		if(idx == 0xffffffff):
@@ -173,24 +234,24 @@ class txOutput:
 		self.pubkey = blockchain.read(self.scriptLen)
 
 	def toString(self):
-		print "\tValue            : %d" % self.value + " Satoshi"
+		print "\tValue            : %d" % self.value + " BTC"
 		print "\tScript Len       : %d" % self.scriptLen
 		print "\tScriptPubkey     : %s" % self.decodeScriptPubkey(self.pubkey)
 		print ""
+
+
 	def decodeScriptPubkey(self,data):
 		hexstr = hashStr(data)
 		op_idx = int(hexstr[0:2],16)
 		try: 
 			op_code1 = OPCODE_NAMES[op_idx]
 		except KeyError: #Obselete pay to pubkey directly 
-			print "\t###"
-			print "\tOP_CODE %d is probably obselete pay to address"
+			print "\tOP_CODE %d is probably obselete pay to address" % op_idx
 			keylen = op_idx
 			op_codeTail = OPCODE_NAMES[int(hexstr[2+keylen*2:2+keylen*2+2],16)]
 			print "\tPubkey OP_CODE:\t " "None " + "Bytes:%d " % keylen +\
 					"tail_op_code:" +  op_codeTail + " " 
 			print "\tPure Pubkey      : %s" % hexstr[2:2+keylen*2]
-			print "\t###"
 			return hexstr
 		if op_code1 == "OP_DUP":  #P2PKHA pay to pubkey hash mode
 	 		op_code2 = OPCODE_NAMES[int(hexstr[2:4],16)] + " "

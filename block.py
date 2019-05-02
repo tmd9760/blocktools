@@ -138,13 +138,17 @@ class Tx:
 
 		self.version = uint4(blockchain)
 
+		self.inputstr = ""
+
 		self.inCount = varint(blockchain)
 		self.inputs = []
 		for i in range(0, self.inCount):
 			input = txInput(blockchain)
 			self.inputs.append(input)
 
-		print "# Inputs Script : %s" % self.inputs
+
+		# print "# Inputs Script : %s" % hashStr(self.inputs[0])
+
 
 		self.outCount = varint(blockchain)
 		self.outputs = []
